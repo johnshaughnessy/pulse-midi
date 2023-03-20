@@ -322,3 +322,37 @@ export async function setPulseAudioSinkMute(
     console.error(`Error setting PulseAudio sink mute state: ${error}`);
   }
 }
+
+export async function setDefaultSource(sourceName: string): Promise<void> {
+  try {
+    await execAsync(`pactl set-default-source "${sourceName}"`);
+  } catch (error) {
+    console.error(`Error setting default source: ${error}`);
+  }
+}
+
+export async function setDefaultSink(sinkName: string): Promise<void> {
+  try {
+    await execAsync(`pactl set-default-sink "${sinkName}"`);
+  } catch (error) {
+    console.error(`Error setting default sink: ${error}`);
+  }
+}
+
+export async function getDefaultSource(): Promise<string | void> {
+  try {
+    const { stdout } = await execAsync(`pactl get-default-source`);
+    return stdout.trim();
+  } catch (error) {
+    console.error(`Error getting default source: ${error}`);
+  }
+}
+
+export async function getDefaultSink(): Promise<string | void> {
+  try {
+    const { stdout } = await execAsync(`pactl get-default-sink`);
+    return stdout.trim();
+  } catch (error) {
+    console.error(`Error getting default sink: ${error}`);
+  }
+}

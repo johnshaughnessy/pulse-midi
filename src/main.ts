@@ -1,5 +1,5 @@
 import { Output } from "easymidi";
-import { ControllerName, configs } from "./config";
+import { Config, ControllerName, configs } from "./config";
 import {
   CC,
   NoteOff,
@@ -13,12 +13,16 @@ import {
 import {
   PulseAudioChangeMessage,
   addPulseAudioChangeListener,
+  getDefaultSink,
+  getDefaultSource,
   getSinkIndexByName,
   getSinkMuted,
   getSinkVolume,
   getSourceIndexByName,
   getSourceMuted,
   getSourceVolume,
+  setDefaultSink,
+  setDefaultSource,
   setPulseAudioSinkMute,
   setPulseAudioSourceMute,
   setSinkVolume,
@@ -40,35 +44,57 @@ async function onCC(ev: CC) {
   }
 }
 
-export async function onNoteOn(ev: NoteOn) {
-  const config = configs.find((cfg) => {
-    return cfg.midiMuteIndex === ev.note || cfg.midiUnmuteIndex === ev.note;
-  });
-  if (!config) return;
-
-  const mute = config.midiMuteIndex === ev.note;
-  const pulseAudioDeviceIndex =
-    config.pulseAudioDeviceType === "source"
-      ? await getSourceIndexByName(config.pulseAudioDeviceName)
-      : await getSinkIndexByName(config.pulseAudioDeviceName);
-
-  if (!pulseAudioDeviceIndex) {
-    console.error(
-      `could not find device for name ${config.pulseAudioDeviceName}`
+async function toggleMute(config: Config) {
+  if (config.pulseAudioDeviceType === "source") {
+    const pulseAudioDeviceIndex = await getSourceIndexByName(
+      config.pulseAudioDeviceName
     );
-    return;
+    const isMuted = await getSourceMuted(config.pulseAudioDeviceName);
+    return setPulseAudioSourceMute(pulseAudioDeviceIndex!, !isMuted);
   }
 
-  if (config.pulseAudioDeviceType === "source") {
-    setPulseAudioSourceMute(pulseAudioDeviceIndex, mute);
-  } else {
-    setPulseAudioSinkMute(pulseAudioDeviceIndex, mute);
+  if (config.pulseAudioDeviceType === "sink") {
+    const pulseAudioDeviceIndex = await getSinkIndexByName(
+      config.pulseAudioDeviceName
+    );
+    const isMuted = await getSinkMuted(config.pulseAudioDeviceName);
+    return setPulseAudioSinkMute(pulseAudioDeviceIndex!, !isMuted);
+  }
+
+  throw new Error("unexpected");
+}
+
+export async function onNoteOn(output: Output, ev: NoteOn) {
+  {
+    const config = configs.find((cfg) => {
+      return cfg.midiButtonToggleMute === ev.note;
+    });
+
+    if (config) {
+      return toggleMute(config);
+    }
+  }
+
+  {
+    const config = configs.find((cfg) => {
+      return cfg.midiButtonSetDefault === ev.note;
+    });
+
+    if (config) {
+      config.pulseAudioDeviceType === "source"
+        ? await setDefaultSource(config.pulseAudioDeviceName)
+        : await setDefaultSink(config.pulseAudioDeviceName);
+
+      flushAll(output);
+    }
   }
 }
 
 function onNoteOff(output: Output, ev: NoteOff) {
   const config = configs.find(
-    (cfg) => ev.note === cfg.midiMuteIndex || ev.note === cfg.midiUnmuteIndex
+    (cfg) =>
+      ev.note === cfg.midiButtonToggleMute ||
+      ev.note === cfg.midiButtonSetDefault
   );
   if (!config) return;
 
@@ -92,9 +118,14 @@ async function flush(output: Output, pulseAudioDeviceName: string) {
       ? await getSinkMuted(config.pulseAudioDeviceName)
       : await getSourceMuted(config.pulseAudioDeviceName);
 
+  const isDefault =
+    config.pulseAudioDeviceType === "sink"
+      ? (await getDefaultSink()!) === config.pulseAudioDeviceName
+      : (await getDefaultSource()!) === config.pulseAudioDeviceName;
+
   setKnob(output, 10, config.midiKnobIndex, volume);
-  setLED(output, 10, config.midiMuteIndex, isMuted);
-  setLED(output, 10, config.midiUnmuteIndex, !isMuted);
+  setLED(output, 10, config.midiButtonToggleMute, !isMuted);
+  setLED(output, 10, config.midiButtonSetDefault, isDefault);
 }
 
 // Flush changes from pulseaudio to the midi controller
@@ -106,9 +137,6 @@ async function onPulseAudioChangeMessage(
   if (!config) return;
 
   flush(output, msg.name);
-  // setKnob(output, 10, config.midiKnobIndex, toMidiVolume(msg.volume));
-  // setLED(output, 10, config.midiMuteIndex, msg.muted);
-  // setLED(output, 10, config.midiUnmuteIndex, !msg.muted);
 }
 
 async function onMidiMessage(output: Output, msg: any) {
@@ -118,7 +146,7 @@ async function onMidiMessage(output: Output, msg: any) {
       onCC(ev);
       break;
     case "noteon":
-      onNoteOn(ev);
+      onNoteOn(output, ev);
       break;
     case "noteoff":
       onNoteOff(output, ev);
