@@ -25,7 +25,7 @@ package() {
   npm ci --production --omit=dev --prefix "$pkgdir/usr/lib/$pkgname"
 
   # Install the executable in $pkgdir
-  install -Dm755 -T "$srcdir/$pkgname/pacman/pulse-midi" "$pkgdir/usr/bin/pulse-midi"
+  install -Dm755 -T "$srcdir/$pkgname/pacman/pulse-midi.sh" "$pkgdir/usr/bin/pulse-midi"
 
   # Install the systemd user unit. (Requires enable and start)
   install -Dm644 "$srcdir/$pkgname/pacman/pulse-midi.service" "$pkgdir/usr/lib/systemd/user/pulse-midi.service"
