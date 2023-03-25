@@ -8,8 +8,15 @@ On archlinux:
 ``` sh
 cd pacman
 makepkg -Ccsfi
-sudo systemctl start pulse-midi
-sudo systemctl enable pulse-midi
+systemctl --user start pulse-midi
+systemctl --user enable pulse-midi
+```
+
+To uninstall: 
+``` sh
+sudo pacman -R pulse-midi
+systemctl --user stop pulse-midi
+systemctl --user daemon-reload
 ```
 
 ## Configuration
