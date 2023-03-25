@@ -27,8 +27,8 @@ Configuration is read from the first file found in the following places:
 
 - `$PULSE_MIDI_CONFIG`, if it exists.
 - `$XDG_CONFIG/pulse-midi/config.yaml`, if it exists.
-- `$HOME/pulse-midi/config.yaml`, if it exists.
-- `$PWD/config.yaml`, if it exists.
+- `$HOME/.config/pulse-midi/config.yaml`, if it exists.
+- `$PWD/config.yaml`, if it exists. (For running in development.)
 
 If no configuration file is found, the program terminates with an error.
 
