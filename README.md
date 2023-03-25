@@ -91,10 +91,21 @@ pactl list sources short | awk '{print $2}'
 pactl list sinks short | awk '{print $2}'
 ```
 
-Retrieve information about your midi device with `ECHO_MIDI_MESSAGES`:
+Retrieve information about your midi device with `ECHO_MIDI_MESSAGES`.
 
+If you are running from source:
 ``` sh
 ECHO_MIDI_MESSAGES=1 npm start
+```
+
+If you are running as a systemd unit:
+``` sh
+systemctl --user set-environment ECHO_MIDI_MESSAGES=1
+systemctl --user restart pulse-midi
+journalctl --user-unit pulse-midi -f
+
+# When you are finished, unset the environment variable:
+systemctl --user unset-environment ECHO_MIDI_MESSAGES
 ```
 
 When you press a button on your device, it will log its `note` to the console:
@@ -104,7 +115,6 @@ When you press a button on your device, it will log its `note` to the console:
 ```
 
 When you change a knob or dial on your device, the program will log its `controller`:
-
 ``` javascript
 { channel: 10, controller: 2, value: 51, _type: 'cc' }
 ```
