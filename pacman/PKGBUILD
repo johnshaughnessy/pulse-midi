@@ -10,19 +10,23 @@ source=("git+https://github.com/johnshaughnessy/pulse-midi")
 sha256sums=('SKIP')
 install=pulse-midi.install
 package() {
+  # Build in $srcdir
   cd "$srcdir/$pkgname"
-
   npm ci
   npm run build
 
-  install -Dm644 "$srcdir/pulse-midi/package-lock.json" "$pkgdir/usr/lib/$pkgname/package-lock.json"
-  install -Dm644 "$srcdir/pulse-midi/package.json" "$pkgdir/usr/lib/$pkgname/package.json"
-
-  npm ci --production --omit=dev --prefix "$pkgdir/usr/lib/$pkgname"
-
+  # Copy the built files from $srcdir to $pkgdir
   install -d "$pkgdir/usr/lib/$pkgname/dist"
   cp -r "$srcdir/$pkgname/dist" "$pkgdir/usr/lib/$pkgname/"
 
-  install -Dm755 -T "$srcdir/$pkgname/pulse-midi" "$pkgdir/usr/bin/pulse-midi"
-  install -Dm644 ./pulse-midi.service "$pkgdir/usr/lib/systemd/user/pulse-midi.service"
+  # Install production dependencies to $pkgdir
+  install -Dm644 "$srcdir/pulse-midi/package-lock.json" "$pkgdir/usr/lib/$pkgname/package-lock.json"
+  install -Dm644 "$srcdir/pulse-midi/package.json" "$pkgdir/usr/lib/$pkgname/package.json"
+  npm ci --production --omit=dev --prefix "$pkgdir/usr/lib/$pkgname"
+
+  # Install the executable in $pkgdir
+  install -Dm755 -T "$srcdir/$pkgname/pacman/pulse-midi" "$pkgdir/usr/bin/pulse-midi"
+
+  # Install the systemd user unit. (Requires enable and start)
+  install -Dm644 "$srcdir/$pkgname/pacman/pulse-midi.service" "$pkgdir/usr/lib/systemd/user/pulse-midi.service"
 }
