@@ -1,2 +1,6 @@
 node_modules/
 dist/
+pacman/pkg/
+pacman/src/
+pacman/pulse-midi/
+pacman/pulse-midi-*
