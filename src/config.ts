@@ -33,8 +33,11 @@ function getConfigFilePath() {
   }
 
   const home = homedir();
-  if (home && existsSync(path.join(home, "pulse-midi", "config.yaml"))) {
-    return path.join(home, "pulse-midi", "config.yaml");
+  if (
+    home &&
+    existsSync(path.join(home, ".config", "pulse-midi", "config.yaml"))
+  ) {
+    return path.join(home, ".config", "pulse-midi", "config.yaml");
   }
 
   if (existsSync("config.yaml")) {

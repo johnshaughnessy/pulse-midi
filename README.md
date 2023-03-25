@@ -7,7 +7,7 @@ Control PulseAudio with a USB Midi Controller.
 On archlinux:
 ``` sh
 cd pacman
-makepkg -si
+makepkg -Ccsfi
 sudo systemctl start pulse-midi
 sudo systemctl enable pulse-midi
 ```
