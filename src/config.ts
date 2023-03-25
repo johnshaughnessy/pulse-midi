@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "fs";
+import { homedir } from "os";
 import { load } from "js-yaml";
 import path from "path";
 
@@ -31,11 +32,9 @@ function getConfigFilePath() {
     return path.join(process.env.XDG_CONFIG, "pulse-midi", "config.yaml");
   }
 
-  if (
-    process.env.HOME &&
-    existsSync(path.join(process.env.HOME, "pulse-midi", "config.yaml"))
-  ) {
-    return path.join(process.env.HOME, "pulse-midi", "config.yaml");
+  const home = homedir();
+  if (home && existsSync(path.join(home, "pulse-midi", "config.yaml"))) {
+    return path.join(home, "pulse-midi", "config.yaml");
   }
 
   if (existsSync("config.yaml")) {
