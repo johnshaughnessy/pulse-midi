@@ -1,0 +1,5 @@
+post_install() {
+  echo "To enable and start pulse-midi.service, run the following commands:"
+  echo "  systemctl --user enable pulse-midi.service"
+  echo "  systemctl --user start pulse-midi.service"
+}

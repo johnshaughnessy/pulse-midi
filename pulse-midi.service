@@ -1,0 +1,11 @@
+[Unit]
+Description=USB Midi Controller for Pulse Audio
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/pulse-midi
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
