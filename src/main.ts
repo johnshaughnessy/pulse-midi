@@ -1,5 +1,5 @@
 import { Output } from "easymidi";
-import { Config, ControllerName, configs } from "./config";
+import { loadConfig, Config, Binding } from "./config";
 import {
   CC,
   NoteOff,
@@ -29,150 +29,153 @@ import {
   setSourceVolume,
 } from "./pulseaudio";
 
-async function onCC(ev: CC) {
-  const config = configs.find((cfg) => {
-    return cfg.midiKnobIndex === ev.controller;
+async function onCC(config: Config, ev: CC) {
+  const binding = config.bindings.find((binding) => {
+    return binding.set_volume === ev.controller;
   });
-  if (!config) return;
+  if (!binding) return;
 
-  if (config.pulseAudioDeviceType === "source") {
-    await setSourceVolume(config.pulseAudioDeviceName, ev.value / 127.0);
-  } else if (config.pulseAudioDeviceType === "sink") {
-    await setSinkVolume(config.pulseAudioDeviceName, ev.value / 127.0);
+  if (binding.type === "source") {
+    await setSourceVolume(binding.name, ev.value / 127.0);
+  } else if (binding.type === "sink") {
+    await setSinkVolume(binding.name, ev.value / 127.0);
   } else {
     throw new Error("unexpected");
   }
 }
 
-async function toggleMute(config: Config) {
-  if (config.pulseAudioDeviceType === "source") {
-    const pulseAudioDeviceIndex = await getSourceIndexByName(
-      config.pulseAudioDeviceName
-    );
-    const isMuted = await getSourceMuted(config.pulseAudioDeviceName);
+async function toggleMute(binding: Binding) {
+  if (binding.type === "source") {
+    const pulseAudioDeviceIndex = await getSourceIndexByName(binding.name);
+    const isMuted = await getSourceMuted(binding.name);
     return setPulseAudioSourceMute(pulseAudioDeviceIndex!, !isMuted);
   }
 
-  if (config.pulseAudioDeviceType === "sink") {
-    const pulseAudioDeviceIndex = await getSinkIndexByName(
-      config.pulseAudioDeviceName
-    );
-    const isMuted = await getSinkMuted(config.pulseAudioDeviceName);
+  if (binding.type === "sink") {
+    const pulseAudioDeviceIndex = await getSinkIndexByName(binding.name);
+    const isMuted = await getSinkMuted(binding.name);
     return setPulseAudioSinkMute(pulseAudioDeviceIndex!, !isMuted);
   }
 
   throw new Error("unexpected");
 }
 
-export async function onNoteOn(output: Output, ev: NoteOn) {
+export async function onNoteOn(config: Config, output: Output, ev: NoteOn) {
   {
-    const config = configs.find((cfg) => {
-      return cfg.midiButtonToggleMute === ev.note;
+    const binding = config.bindings.find((binding) => {
+      return binding.toggle_mute === ev.note;
     });
 
-    if (config) {
-      return toggleMute(config);
+    if (binding) {
+      return toggleMute(binding);
     }
   }
 
   {
-    const config = configs.find((cfg) => {
-      return cfg.midiButtonSetDefault === ev.note;
+    const binding = config.bindings.find((binding) => {
+      return binding.set_default === ev.note;
     });
 
-    if (config) {
-      config.pulseAudioDeviceType === "source"
-        ? await setDefaultSource(config.pulseAudioDeviceName)
-        : await setDefaultSink(config.pulseAudioDeviceName);
+    if (binding) {
+      binding.type === "source"
+        ? await setDefaultSource(binding.name)
+        : await setDefaultSink(binding.name);
 
-      flushAll(output);
+      flushAll(config, output);
     }
   }
 }
 
-function onNoteOff(output: Output, ev: NoteOff) {
-  const config = configs.find(
-    (cfg) =>
-      ev.note === cfg.midiButtonToggleMute ||
-      ev.note === cfg.midiButtonSetDefault
+function onNoteOff(config: Config, output: Output, ev: NoteOff) {
+  const binding = config.bindings.find(
+    (binding) =>
+      ev.note === binding.toggle_mute || ev.note === binding.set_default
   );
-  if (!config) return;
+  if (!binding) return;
 
-  flush(output, config.pulseAudioDeviceName);
+  flush(config, output, binding.name);
 }
 
-async function flush(output: Output, pulseAudioDeviceName: string) {
-  const config = configs.find(
-    (cfg) => cfg.pulseAudioDeviceName === pulseAudioDeviceName
+async function flush(
+  config: Config,
+  output: Output,
+  pulseAudioDeviceName: string
+) {
+  const binding = config.bindings.find(
+    (binding) => binding.name === pulseAudioDeviceName
   );
-  if (!config) return;
+  if (!binding) return;
 
   const volume = toMidiVolume(
-    config.pulseAudioDeviceType === "sink"
-      ? await getSinkVolume(config.pulseAudioDeviceName)
-      : await getSourceVolume(config.pulseAudioDeviceName)
+    binding.type === "sink"
+      ? await getSinkVolume(binding.name)
+      : await getSourceVolume(binding.name)
   );
 
   const isMuted =
-    config.pulseAudioDeviceType === "sink"
-      ? await getSinkMuted(config.pulseAudioDeviceName)
-      : await getSourceMuted(config.pulseAudioDeviceName);
+    binding.type === "sink"
+      ? await getSinkMuted(binding.name)
+      : await getSourceMuted(binding.name);
 
   const isDefault =
-    config.pulseAudioDeviceType === "sink"
-      ? (await getDefaultSink()!) === config.pulseAudioDeviceName
-      : (await getDefaultSource()!) === config.pulseAudioDeviceName;
+    binding.type === "sink"
+      ? (await getDefaultSink()!) === binding.name
+      : (await getDefaultSource()!) === binding.name;
 
-  setKnob(output, 10, config.midiKnobIndex, volume);
-  setLED(output, 10, config.midiButtonToggleMute, !isMuted);
-  setLED(output, 10, config.midiButtonSetDefault, isDefault);
+  setKnob(output, 10, binding.set_volume, volume);
+  setLED(output, 10, binding.toggle_mute, !isMuted);
+  setLED(output, 10, binding.set_default, isDefault);
 }
 
 // Flush changes from pulseaudio to the midi controller
 async function onPulseAudioChangeMessage(
+  config: Config,
   output: Output,
   msg: PulseAudioChangeMessage
 ) {
-  const config = configs.find((cfg) => cfg.pulseAudioDeviceName === msg.name);
-  if (!config) return;
+  const binding = config.bindings.find((binding) => binding.name === msg.name);
+  if (!binding) return;
 
-  flush(output, msg.name);
+  flush(config, output, msg.name);
 }
 
-async function onMidiMessage(output: Output, msg: any) {
+async function onMidiMessage(config: Config, output: Output, msg: any) {
   const ev = cast(msg);
+  if (process.env.ECHO_MIDI_MESSAGES) console.log(ev);
   switch (ev._type) {
     case "cc":
-      onCC(ev);
+      onCC(config, ev);
       break;
     case "noteon":
-      onNoteOn(output, ev);
+      onNoteOn(config, output, ev);
       break;
     case "noteoff":
-      onNoteOff(output, ev);
+      onNoteOff(config, output, ev);
       break;
   }
 }
 
-function flushAll(output: Output) {
-  configs.forEach((config) => {
-    flush(output, config.pulseAudioDeviceName);
+function flushAll(config: Config, output: Output) {
+  config.bindings.forEach((binding) => {
+    flush(config, output, binding.name);
   });
 }
 
 function main() {
-  const controller = findMidiController(ControllerName);
+  const config = loadConfig();
+
+  const controller = findMidiController(config.controller_name);
   if (!controller) {
-    throw new Error(`MIDI controller not found: ${ControllerName}`);
+    throw new Error(`MIDI controller not found: ${config.controller_name}`);
   }
 
-  flushAll(controller.output);
+  flushAll(config, controller.output);
 
   addPulseAudioChangeListener((m: any) => {
-    onPulseAudioChangeMessage(controller.output, m);
+    onPulseAudioChangeMessage(config, controller.output, m);
   });
   (controller.input as any).on("message", (m: any) => {
-    onMidiMessage(controller.output, m);
+    onMidiMessage(config, controller.output, m);
   });
 }
 

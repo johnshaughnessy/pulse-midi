@@ -1,0 +1,22 @@
+controller_name: X-TOUCH MINI
+bindings:
+  - name: alsa_output.usb-Apple__Inc._USB-C_to_3.5mm_Headphone_Jack_Adapter_DWH211708ZLJKLTAN-00.analog-stereo
+    type: sink
+    set_volume: 1
+    toggle_mute: 16
+    set_default: 8
+  - name: alsa_output.usb-Logitech_Logitech_G430_Gaming_Headset-00.analog-stereo
+    type: sink
+    set_volume: 2
+    toggle_mute: 17
+    set_default: 9
+  - name: alsa_output.usb-Bose_Bose_USB_Link_082063Z12610201AE-00.analog-stereo
+    type: sink
+    set_volume: 3
+    toggle_mute: 18
+    set_default: 10
+  - name: alsa_input.usb-Antlion_Audio_Antlion_USB_Microphone-00.mono-fallback
+    type: source
+    set_volume: 8
+    toggle_mute: 23
+    set_default: 15
