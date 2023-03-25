@@ -51,9 +51,9 @@ export type Config = {
 };
 ```
 
-The `set_volume` value determines which MIDI `controller` index will control the volume of the pulse audio source/sink.
-The `toggle_mute` value determines which MIDI `note` index will toggle the mute state of the pulse audio source/sink.
-The `set_default` value determines which MIDI `note` index will set the pulse audio source/sink as the default.
+- The `set_volume` value determines which MIDI `controller` index will control the volume of the pulse audio source/sink.
+- The `toggle_mute` value determines which MIDI `note` index will toggle the mute state of the pulse audio source/sink.
+- The `set_default` value determines which MIDI `note` index will set the pulse audio source/sink as the default.
 
 For example, `config.yaml` might look like this:
 ``` yaml
