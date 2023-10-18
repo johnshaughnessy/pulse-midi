@@ -1,0 +1,3 @@
+* TODO Auto-bind to available sources and sinks
+* TODO Recover from failure (without crashing)
+* TODO Tool for configuration (and live use?)
