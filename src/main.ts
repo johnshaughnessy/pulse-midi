@@ -44,6 +44,16 @@ async function onCC(config: Config, ev: CC) {
   }
 }
 
+async function tryToggleMute(binding: Binding) {
+  try {
+    await toggleMute(binding);
+  } catch (e) {
+    console.error(`Toggle mute error.`);
+    console.error(e);
+    console.error(`binding: ${JSON.stringify(binding)}`);
+  }
+}
+
 async function toggleMute(binding: Binding) {
   if (binding.type === "source") {
     const pulseAudioDeviceIndex = await getSourceIndexByName(binding.name);
@@ -67,7 +77,7 @@ export async function onNoteOn(config: Config, output: Output, ev: NoteOn) {
     });
 
     if (binding) {
-      return toggleMute(binding);
+      return tryToggleMute(binding);
     }
   }
 
@@ -89,27 +99,42 @@ export async function onNoteOn(config: Config, output: Output, ev: NoteOn) {
 function onNoteOff(config: Config, output: Output, ev: NoteOff) {
   const binding = config.bindings.find(
     (binding) =>
-      ev.note === binding.toggle_mute || ev.note === binding.set_default
+      ev.note === binding.toggle_mute || ev.note === binding.set_default,
   );
   if (!binding) return;
 
-  flush(config, output, binding.name);
+  tryFlush(config, output, binding.name);
+}
+
+async function tryFlush(
+  config: Config,
+  output: Output,
+  pulseAudioDeviceName: string,
+) {
+  try {
+    await flush(config, output, pulseAudioDeviceName);
+  } catch (e) {
+    console.error(`Flush error.`);
+    console.error(e);
+    console.error(`pulseAudioDeviceName: ${pulseAudioDeviceName}`);
+    console.error(`config: ${JSON.stringify(config)}`);
+  }
 }
 
 async function flush(
   config: Config,
   output: Output,
-  pulseAudioDeviceName: string
+  pulseAudioDeviceName: string,
 ) {
   const binding = config.bindings.find(
-    (binding) => binding.name === pulseAudioDeviceName
+    (binding) => binding.name === pulseAudioDeviceName,
   );
   if (!binding) return;
 
   const volume = toMidiVolume(
     binding.type === "sink"
       ? await getSinkVolume(binding.name)
-      : await getSourceVolume(binding.name)
+      : await getSourceVolume(binding.name),
   );
 
   const isMuted =
@@ -131,12 +156,12 @@ async function flush(
 async function onPulseAudioChangeMessage(
   config: Config,
   output: Output,
-  msg: PulseAudioChangeMessage
+  msg: PulseAudioChangeMessage,
 ) {
   const binding = config.bindings.find((binding) => binding.name === msg.name);
   if (!binding) return;
 
-  flush(config, output, msg.name);
+  tryFlush(config, output, msg.name);
 }
 
 async function onMidiMessage(config: Config, output: Output, msg: any) {
@@ -157,7 +182,7 @@ async function onMidiMessage(config: Config, output: Output, msg: any) {
 
 function flushAll(config: Config, output: Output) {
   config.bindings.forEach((binding) => {
-    flush(config, output, binding.name);
+    tryFlush(config, output, binding.name);
   });
 }
 
@@ -175,7 +200,13 @@ function main() {
     onPulseAudioChangeMessage(config, controller.output, m);
   });
   (controller.input as any).on("message", (m: any) => {
-    onMidiMessage(config, controller.output, m);
+    try {
+      onMidiMessage(config, controller.output, m);
+    } catch (e) {
+      console.error(`Error processing midi message`);
+      console.error(e);
+      console.error(`message: ${JSON.stringify(m)}`);
+    }
   });
 }
 
