@@ -7,6 +7,7 @@ Control PulseAudio with a USB Midi Controller.
 On archlinux:
 
 ```sh
+# Install pulse-midi
 cd pacman
 makepkg -Ccsfi
 systemctl --user start pulse-midi
@@ -22,7 +23,8 @@ Optionally, if you wish to restart the service whenever a usb device is connecte
 To uninstall:
 
 ```sh
-sudo pacman -R pulse-midi
+# Uninstall pulse-midi
+sudo pacman -Rs pulse-midi pulse-midi-debug
 systemctl --user stop pulse-midi
 systemctl --user daemon-reload
 ```
